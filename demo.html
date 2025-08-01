@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Razor Sharp Retail</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+    header {
+      background: #111;
+      color: white;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .auth-buttons {
+      display: flex;
+      gap: 10px;
+    }
+    .auth-buttons button {
+      background: #f04;
+      border: none;
+      padding: 0.5rem 1rem;
+      color: white;
+      cursor: pointer;
+    }
+    .hidden { display: none; }
+    .hero, .locations, .products {
+      padding: 2rem;
+    }
+    .location-cards {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .card {
+      border: 1px solid #ddd;
+      padding: 1rem;
+      flex: 1;
+      background: #fff;
+      border-radius: 5px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+    form {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    input, select {
+      padding: 0.5rem;
+      flex: 1;
+    }
+    form button {
+      background: #007BFF;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+    }
+    .filters {
+      margin-bottom: 1rem;
+      display: flex;
+      gap: 1rem;
+    }
+    .product-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 1rem;
+    }
+    .product-card {
+      border: 1px solid #ccc;
+      padding: 1rem;
+      border-radius: 5px;
+      background: #fff;
+    }
+    .container {
+      max-width: 500px;
+      margin: 4rem auto;
+    }
+    .auth-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding: 2rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    .auth-form h2 {
+      text-align: center;
+    }
+    #logoutBtn {
+      background: darkred;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Auth container -->
+  <div id="authContainer" class="container">
+    <form class="auth-form" id="signupForm">
+      <h2>Sign Up</h2>
+      <input type="text" id="signupName" placeholder="Name" required />
+      <input type="email" id="signupEmail" placeholder="Email" required />
+      <input type="password" id="signupPassword" placeholder="Password" required />
+      <select id="signupRole" required>
+        <option value="">Select Role</option>
+        <option value="Admin">Admin</option>
+        <option value="Staff">Staff</option>
+      </select>
+      <button type="submit">Create Account</button>
+      <p>Already have an account? <a href="#" onclick="toggleForms(true)">Sign In</a></p>
+    </form>
+
+    <form class="auth-form hidden" id="loginForm">
+      <h2>Sign In</h2>
+      <input type="email" id="loginEmail" placeholder="Email" required />
+      <input type="password" id="loginPassword" placeholder="Password" required />
+      <button type="submit">Login</button>
+      <p>Don't have an account? <a href="#" onclick="toggleForms(false)">Sign Up</a></p>
+    </form>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard" class="hidden">
+
+    <header>
+      <h1>Razor Sharp</h1>
+      <div class="auth-buttons">
+        <span id="welcomeUser"></span>
+        <button id="logoutBtn" onclick="logout()">Logout</button>
+      </div>
+    </header>
+
+    <section class="hero">
+      <h2>Welcome to Razor Sharp Retail</h2>
+      <p>Your one-stop fashion store, now digital and nationwide.</p>
+    </section>
+
+    <section class="locations">
+      <h2>Our Store Locations</h2>
+      <div class="location-cards">
+        <div class="card">Lagos - Lekki Phase 1</div>
+        <div class="card">Abuja - Wuse 2</div>
+        <div class="card">Port Harcourt - GRA</div>
+      </div>
+    </section>
+
+    <section class="products">
+      <h2>Add a Product</h2>
+      <form id="productForm">
+        <input type="text" id="productName" placeholder="Product Name" required />
+        <input type="text" id="productPrice" placeholder="Price" required />
+        <select id="productLocation">
+          <option value="">Select Location</option>
+          <option value="Lagos">Lagos</option>
+          <option value="Abuja">Abuja</option>
+          <option value="Port Harcourt">Port Harcourt</option>
+        </select>
+        <button type="submit">Add Product</button>
+      </form>
+
+      <div class="filters">
+        <select id="filterLocation">
+          <option value="">Filter by Location</option>
+          <option value="Lagos">Lagos</option>
+          <option value="Abuja">Abuja</option>
+          <option value="Port Harcourt">Port Harcourt</option>
+        </select>
+        <input type="text" id="searchInput" placeholder="Search Product..." />
+      </div>
+
+      <div class="product-list" id="productList"></div>
+    </section>
+  </div>
+
+  <script>
+    let users = JSON.parse(localStorage.getItem('users')) || [];
+    let products = JSON.parse(localStorage.getItem('products')) || [];
+    let currentUser = JSON.parse(localStorage.getItem('currentUser')) || null;
+
+    const signupForm = document.getElementById('signupForm');
+    const loginForm = document.getElementById('loginForm');
+    const authContainer = document.getElementById('authContainer');
+    const dashboard = document.getElementById('dashboard');
+    const welcomeUser = document.getElementById('welcomeUser');
+    const productList = document.getElementById('productList');
+
+    function toggleForms(showLogin) {
+      loginForm.classList.toggle('hidden', !showLogin);
+      signupForm.classList.toggle('hidden', showLogin);
+    }
+
+    signupForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      const name = document.getElementById('signupName').value;
+      const email = document.getElementById('signupEmail').value;
+      const password = document.getElementById('signupPassword').value;
+      const role = document.getElementById('signupRole').value;
+
+      users.push({ name, email, password, role });
+      localStorage.setItem('users', JSON.stringify(users));
+      alert("Account created! Please sign in.");
+      toggleForms(true);
+      signupForm.reset();
+    });
+
+    loginForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+
+      const user = users.find(u => u.email === email && u.password === password);
+      if (!user) return alert("Invalid credentials");
+
+      currentUser = user;
+      localStorage.setItem('currentUser', JSON.stringify(user));
+      showDashboard();
+    });
+
+    function logout() {
+      localStorage.removeItem('currentUser');
+      location.reload();
+    }
+
+    function showDashboard() {
+      authContainer.classList.add('hidden');
+      dashboard.classList.remove('hidden');
+      welcomeUser.textContent = `Welcome, ${currentUser.name} (${currentUser.role})`;
+      renderProducts();
+    }
+
+    // Show dashboard if user is logged in
+    if (currentUser) {
+      showDashboard();
+    }
+
+    // Product logic
+    const productForm = document.getElementById('productForm');
+    const filterLocation = document.getElementById('filterLocation');
+    const searchInput = document.getElementById('searchInput');
+
+    productForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      const name = document.getElementById('productName').value;
+      const price = document.getElementById('productPrice').value;
+      const location = document.getElementById('productLocation').value;
+
+      if (!name || !price || !location) return;
+
+      const newProduct = { name, price, location };
+      products.push(newProduct);
+      localStorage.setItem('products', JSON.stringify(products));
+      renderProducts();
+      productForm.reset();
+    });
+
+    filterLocation.addEventListener('change', () => {
+      const selected = filterLocation.value;
+      const filtered = selected ? products.filter(p => p.location === selected) : products;
+      renderProducts(filtered);
+    });
+
+    searchInput.addEventListener('input', () => {
+      const query = searchInput.value.toLowerCase();
+      const searched = products.filter(p => p.name.toLowerCase().includes(query));
+      renderProducts(searched);
+    });
+
+    function renderProducts(list = products) {
+      productList.innerHTML = '';
+      list.forEach(product => {
+        const card = document.createElement('div');
+        card.className = 'product-card';
+        card.innerHTML = `
+          <h4>${product.name}</h4>
+          <p>₦${product.price}</p>
+          <p><strong>${product.location}</strong></p>
+        `;
+        productList.appendChild(card);
+      });
+    }
+  </script>
+
+</body>
+</html>
